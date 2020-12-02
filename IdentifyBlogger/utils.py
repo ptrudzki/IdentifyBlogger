@@ -21,7 +21,8 @@ def encode_data(data: pd.DataFrame, category_map: Dict[str, Dict[str, int]]) -> 
     """
     assert category_map.keys() in data.columns, "encoded categories and column names don't match"
     for cat in category_map.keys():
-        data[cat] = data[cat].apply(lambda row: category_map[cat][row[cat]], axis=1)
+        # data[cat] = data[cat].apply(lambda row: category_map[cat][row[cat]], axis=1)
+        data[cat] = data[cat].map(category_map[cat])
     return data
 
 
@@ -34,7 +35,8 @@ def decode_data(data: pd.DataFrame, category_map: Dict[str, Dict[str, int]]) -> 
     """
     enc2label = {cat: {v: k for k, v in category_map[cat].items()} for cat in category_map.keys()}
     for cat in enc2label.keys():
-        data[cat] = data[cat].apply(lambda row: enc2label[cat][row[cat]], axis=1)
+        # data[cat] = data[cat].apply(lambda row: enc2label[cat][row[cat]], axis=1)
+        data[cat] = data[cat].map(enc2label[cat])
     return data
 
 

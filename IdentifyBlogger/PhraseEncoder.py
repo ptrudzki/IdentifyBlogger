@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from typing import Tuple, Dict, List
+from typing import Dict, List
 import pandas as pd
 import spacy
 
@@ -84,6 +84,14 @@ class PhraseEncoder:
         :param phrase:
         :return:
         """
-        return [self._lookup_enc(token.text) for token in self.nlp(phrase.lower(),
-                                                                   disable=['parser', 'tagger', 'ner'])]
+        phrase = re.sub('\W+', ' ', phrase.lower())
+        phrase = phrase if not phrase.startswith(' ') else phrase[1:]
+        return [self._lookup_enc(token.text) for token in self.nlp(phrase, disable=['parser', 'tagger', 'ner'])]
 
+    def encode_text(self, text: pd.Series) -> pd.Series:
+        """
+
+        :param text:
+        :return:
+        """
+        return text.apply(self.encode_phrase, axis=1)
