@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from typing import Tuple, Dict, List
 import pandas as pd
 import spacy
@@ -29,14 +30,27 @@ class PhraseEncoder:
         """
         return len(self.vocabulary) == 0
 
-    def _get_vocabulary(self, data_dir: str, min_freq: int = 3) -> Dict[str, int]:
+    def _get_vocabulary(self, data: pd.Series, min_freq: int = 3) -> Dict[str, int]:
         """
         creates vocabulary, set of words occurring in train data subset with corresponding integer encoding
-        :param data_dir: path to directory with data
+        :param data:
         :param min_freq: minimum number of times word has to occur in dataset to be added to vocabulary
         :return: vocabulary
         """
-        raise NotImplemented
+        vocabulary = {'xxpad': 0, 'xxunk': 1}
+        freq_map = {}
+        for text in data:
+            text = re.sub('\W+', ' ', text.lower())
+            text = text if not text.startswith(' ') else text[1:]
+            for token in self.nlp(text, disable=['parser', 'tagger', 'ner']):
+                if token.text not in freq_map.keys():
+                    freq_map[token.text] = 0
+                else:
+                    freq_map[token.text] += 1
+        for token, freq in freq_map.items():
+            if freq >= min_freq:
+                vocabulary[token] = len(vocabulary)
+        return vocabulary
 
     def load_vocabulary(self, model_dirpath: str) -> None:
         """
