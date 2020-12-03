@@ -19,7 +19,7 @@ def encode_data(data: pd.DataFrame, category_map: Dict[str, Dict[str, int]]) -> 
     :param category_map:
     :return:
     """
-    assert category_map.keys() in data.columns, "encoded categories and column names don't match"
+    # assert category_map.keys() in data.columns, "encoded categories and column names don't match"
     for cat in category_map.keys():
         # data[cat] = data[cat].apply(lambda row: category_map[cat][row[cat]], axis=1)
         data[cat] = data[cat].map(category_map[cat])

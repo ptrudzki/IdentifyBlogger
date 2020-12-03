@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List
 
 import torch
 from torch import nn
@@ -21,10 +21,22 @@ class IdentityLSTM(nn.Module):
         """
         super(IdentityLSTM, self).__init__()
         assert len(output_dims) == len(activations), f"length of output dims ({len(output_dims)}) must be equal to length of activations ({len(activations)})"
-        self.embedding = nn.Embedding(vocab_size, embedding_size)
+        self.embedding = nn.Embedding(vocab_size, embedding_size, sparse=True)
         self.lstm = nn.LSTM(embedding_size, hidden_size, num_layers=n_layers, batch_first=True)
-        self.output_layers = [self._get_output_layer(n_layers * hidden_size, d, a) for d, a in
-                              zip(output_dims, activations)]
+        # self.output_layers_names = []
+        # for i, (dim, activation) in enumerate(zip(output_dims, activations)):
+        #     setattr(self, f"linear{i}", self._get_output_layer(n_layers * hidden_size, dim, activation))
+        #     self.output_layers_names.append(f"linear{i}")
+        self.output_layers = nn.ModuleList([self._get_output_layer(n_layers * hidden_size, d, a) for d, a in
+                                            zip(output_dims, activations)])
+
+    @property
+    def device(self):
+        return next(self.parameters()).device
+
+    @property
+    def n_outputs(self):
+        return len(self.output_layers)
 
     @staticmethod
     def _get_output_layer(input_dim: int, output_dim: int, activation: str = None) -> nn.Sequential:
@@ -33,7 +45,7 @@ class IdentityLSTM(nn.Module):
             act = getattr(nn, activation)
             kwargs = {} if activation != "Softmax" else {"dim": 1}
             layers.append(act(**kwargs))
-        return nn.Sequential(layers)
+        return nn.Sequential(*layers)
 
     def forward(self, encoded_text: torch.Tensor, lengths: torch.Tensor) -> List[torch.Tensor]:
         """
@@ -47,5 +59,6 @@ class IdentityLSTM(nn.Module):
         packed_embeded = nn.utils.rnn.pack_padded_sequence(embedded, lengths, batch_first=True)
         _, (hidden, cell) = self.lstm(packed_embeded)
         hidden = hidden.permute([1, 0, 2]).contiguous().view(batch_size, -1)
+        # outputs = [getattr(self, layer)(hidden) for layer in self.output_layers_names]
         outputs = [layer(hidden) for layer in self.output_layers]
         return outputs

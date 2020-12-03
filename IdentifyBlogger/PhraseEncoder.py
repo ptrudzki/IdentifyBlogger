@@ -3,25 +3,27 @@ import os
 import re
 from typing import Dict, List
 import pandas as pd
-import spacy
 
 
 class PhraseEncoder:
     """
     class for generating and storing vocabulary set and using it to encode phrases
     """
-    nlp = spacy.load('en_core_web_sm')
 
-    def __init__(self, data_path: str = None, min_freq: int = 3) -> None:
+    def __init__(self, data: pd.Series = None, min_freq: int = 3) -> None:
         """
         initializing encoder as empty or using data from specified directory
         :param data_path: path to specified directory
         :param min_freq: minimum number of times word has to occur in dataset to be added to vocabulary
         """
-        if data_path is None:
+        if data is None:
             self.vocabulary = {}
         else:
-            self.vocabulary = self._get_vocabulary(data_path, min_freq)
+            self.vocabulary = self._get_vocabulary(data, min_freq)
+
+    @property
+    def vocab_size(self) -> int:
+        return len(self.vocabulary)
 
     @property
     def is_empty(self) -> bool:
@@ -40,13 +42,13 @@ class PhraseEncoder:
         vocabulary = {'xxpad': 0, 'xxunk': 1}
         freq_map = {}
         for text in data:
-            text = re.sub('\W+', ' ', text.lower())
+            text = re.sub('[^\w ]', ' ', text.lower())
             text = text if not text.startswith(' ') else text[1:]
-            for token in self.nlp(text, disable=['parser', 'tagger', 'ner']):
-                if token.text not in freq_map.keys():
-                    freq_map[token.text] = 0
+            for token in text.split():
+                if token not in freq_map.keys():
+                    freq_map[token] = 0
                 else:
-                    freq_map[token.text] += 1
+                    freq_map[token] += 1
         for token, freq in freq_map.items():
             if freq >= min_freq:
                 vocabulary[token] = len(vocabulary)
@@ -86,7 +88,7 @@ class PhraseEncoder:
         """
         phrase = re.sub('\W+', ' ', phrase.lower())
         phrase = phrase if not phrase.startswith(' ') else phrase[1:]
-        return [self._lookup_enc(token.text) for token in self.nlp(phrase, disable=['parser', 'tagger', 'ner'])]
+        return [self._lookup_enc(token) for token in phrase.split()]
 
     def encode_text(self, text: pd.Series) -> pd.Series:
         """
@@ -94,4 +96,4 @@ class PhraseEncoder:
         :param text:
         :return:
         """
-        return text.apply(self.encode_phrase, axis=1)
+        return text.apply(self.encode_phrase)

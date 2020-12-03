@@ -18,10 +18,9 @@ def split_data(data: pd.DataFrame, test_size: float = 0.1) -> Dict[str, List[int
     ids = data["id"].unique()
     np.random.shuffle(ids)
     test_bloggers = ids[:int(test_size * ids.size)]
-    train_bloggers = ids[test_bloggers.size:]
-    test_ids = list(data[data["id"].isin(test_bloggers)].index)
-    train_ids = list(data[data["id"].isin(train_bloggers)].index)
-    return {"train": train_ids, "test": test_ids}
+    validation_bloggers = ids[test_bloggers.size:test_bloggers.size*2]
+    train_bloggers = ids[validation_bloggers.size:]
+    return {"train": train_bloggers, "validation": validation_bloggers, "test": test_bloggers}
 
 
 def generate_category_map(data: pd.DataFrame, categorical_vars: List[str]) -> Dict[str, Dict[str, int]]:
@@ -72,7 +71,7 @@ def preprocess_data(data: pd.DataFrame, test_size: float = 0.1, categorical_vari
             f.close()
 
     if age_scaling_params_path is None:
-        train_ages = data["age"].iloc[split["train"]]
+        train_ages = data["age"][data["id"].isin(split["train"])]
         age_scaling_params = {"min": train_ages.min(),
                               "max": train_ages.max()}
     else:
