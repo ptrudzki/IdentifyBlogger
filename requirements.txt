@@ -1,0 +1,5 @@
+numpy~=1.18.1
+pandas~=1.0.1
+typing~=3.7.4.3
+tqdm~=4.42.1
+fire~=0.3.1
