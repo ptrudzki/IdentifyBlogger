@@ -40,6 +40,13 @@ class IdentityLSTM(nn.Module):
 
     @staticmethod
     def _get_output_layer(input_dim: int, output_dim: int, activation: str = None) -> nn.Sequential:
+        """
+        returns linear layer with specified activation
+        :param input_dim:
+        :param output_dim:
+        :param activation:
+        :return:
+        """
         layers = [nn.Linear(input_dim, output_dim)]
         if activation is not None:
             act = getattr(nn, activation)

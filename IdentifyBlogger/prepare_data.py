@@ -7,14 +7,25 @@ import pandas as pd
 
 from IdentifyBlogger.BloggerDataset import BloggerDataset
 from IdentifyBlogger.PhraseEncoder import PhraseEncoder
-from IdentifyBlogger.utils import encode_data
+
+
+def encode_data(data: pd.DataFrame, category_map: Dict[str, Dict[str, int]]) -> pd.DataFrame:
+    """
+    encodes categorical data alongside provided map
+    :param data: data to encode
+    :param category_map: labels  encodeings
+    :return: encoded data
+    """
+    for cat in category_map.keys():
+        data[cat] = data[cat].map(category_map[cat])
+    return data
 
 
 def load_json(json_path: str) -> Dict:
     """
-
-    :param json_path:
-    :return:
+    loads json file from specified path
+    :param json_path: path to json file
+    :return: json file's content
     """
     with open(json_path, "r") as f:
         d = json.load(f)
@@ -24,10 +35,9 @@ def load_json(json_path: str) -> Dict:
 
 def save_json(d: Dict, json_path: str) -> None:
     """
-
-    :param d:
-    :param json_path:
-    :return:
+    saves object to json file in specified path
+    :param d: object to save
+    :param json_path: path to save object to
     """
     with open(json_path, "w") as f:
         json.dump(d, f)
@@ -37,12 +47,11 @@ def save_json(d: Dict, json_path: str) -> None:
 def save_info(split: Dict[str, List[int]], category_map: Dict[str, Dict[str, int]], age_scaling_params: Dict[str, int],
               info_dir: str) -> None:
     """
-
-    :param split:
-    :param category_map:
-    :param age_scaling_params:
-    :param info_dir:
-    :return:
+    saves preprocesing info to specified directory
+    :param split: data split
+    :param category_map: category encoding map
+    :param age_scaling_params: parameters for age scaling
+    :param info_dir: path to saving directory
     """
     save_json(split, os.path.join(info_dir, "data_split.json"))
     save_json(category_map, os.path.join(info_dir, "category_map.json"))
@@ -51,9 +60,9 @@ def save_info(split: Dict[str, List[int]], category_map: Dict[str, Dict[str, int
 
 def load_info(info_dir: str) -> Tuple[Dict[str, List[int]], Dict[str, Dict[str, int]], Dict[str, int]]:
     """
-
-    :param info_dir:
-    :return:
+    loads preprocesing info from specified directory
+    :param info_dir: path to directory with preprocessing info
+    :return: split, category_map, age_scaling_params
     """
     split = load_json(os.path.join(info_dir, "data_split.json"))
     category_map = load_json(os.path.join(info_dir, "category_map.json"))
@@ -63,10 +72,10 @@ def load_info(info_dir: str) -> Tuple[Dict[str, List[int]], Dict[str, Dict[str, 
 
 def split_data(data: pd.DataFrame, test_size: float = 0.1) -> Dict[str, List[int]]:
     """
-
-    :param test_size:
-    :param data:
-    :return:
+    splits data  into train, validation and test subsets
+    :param data: data to split
+    :param test_size: relative sizes of test and validation datasets
+    :return: split information
     """
     ids = data["id"].unique()
     np.random.shuffle(ids)
@@ -78,10 +87,10 @@ def split_data(data: pd.DataFrame, test_size: float = 0.1) -> Dict[str, List[int
 
 def generate_category_map(data: pd.DataFrame, categorical_vars: List[str]) -> Dict[str, Dict[str, int]]:
     """
-
-    :param categorical_vars:
-    :param data:
-    :return:
+    generates maps for encoding categorical variables
+    :param data: data with variables to map
+    :param categorical_vars: names of categorical variables
+    :return: maps for encoding categorical variables
     """
     label_maps = {}
     for cat in categorical_vars:
@@ -94,12 +103,12 @@ def generate_info(data: pd.DataFrame, test_size: float = 0.1, categorical_variab
                   min_vocab_freq: int = 25) -> Tuple[Dict[str, List[int]], Dict[str, Dict[str, int]], Dict[str, int],
                                                      Dict[str, int]]:
     """
-
-    :param data:
-    :param test_size:
-    :param categorical_variables:
-    :param min_vocab_freq:
-    :return:
+    generates data split, maps for encoding categorical variables, parameters for age scaling and vocabulary
+    :param data: data
+    :param test_size: relative sizes of test and validation datasets
+    :param categorical_variables: names of categorical variables
+    :param min_vocab_freq: minimum frequency in corpus for word to be included in vocabulary
+    :return: split, category_map, age_scaling_params, vocabulary
     """
     if categorical_variables is None:
         categorical_variables = ["gender", "topic", "sign"]
@@ -117,11 +126,11 @@ def generate_info(data: pd.DataFrame, test_size: float = 0.1, categorical_variab
 def preprocess_targets(data: pd.DataFrame, category_map: Dict[str, Dict[str, int]] = None,
                        age_scaling_params: Dict[str, int] = None) -> pd.DataFrame:
     """
-
-    :param data:
-    :param category_map:
-    :param age_scaling_params:
-    :return:
+    preprocesses target variables in data
+    :param data: data to preprocess
+    :param category_map: category encodings
+    :param age_scaling_params: age scaling parameters
+    :return: data with preprocessed targets
     """
     if "date" in data.columns:
         data = data.drop(["date"], axis=1)
@@ -135,15 +144,18 @@ def prepare_train_data(data: pd.DataFrame, validate: bool = True, preprocess_inf
                        test_size: float = 0.1, categorical_variables: List[str] = None, min_vocab_freq: int = 25,
                        save_preprocess_info_dir: str = None) -> Tuple[BloggerDataset, BloggerDataset, Dict]:
     """
-
-    :param data:
-    :param validate:
-    :param preprocess_info_dir:
-    :param test_size:
-    :param categorical_variables:
-    :param min_vocab_freq:
-    :param save_preprocess_info_dir:
-    :return:
+    prepares train and validation datasets for training and returns sme values required for building an nn
+    :param data: data
+    :param validate: whether to create validation dataset or not, if not validation data will be used in training and
+    returned validation dataset will be None
+    :param preprocess_info_dir: path to directory with preprocessing information; inf not None, preprocessing
+    information will be loeded from this  directory
+    :param test_size: relative sizes of test and validation datasets (inactive if loading preprocessing info)
+    :param categorical_variables:  list of names of categorical variables
+    :param min_vocab_freq: minimum frequency in corpus for word to be included in vocabulary (inactive if loading
+    preprocessing info)
+    :param save_preprocess_info_dir: defines whether preprocess info will be saved or not
+    :return: train_dataset, validation_dataset, model_sizes
     """
     labels_order = ["gender", "age", "topic", "sign"]
     enc = PhraseEncoder()
@@ -191,10 +203,10 @@ def prepare_train_data(data: pd.DataFrame, validate: bool = True, preprocess_inf
 
 def prepare_evaluation_data(data: pd.DataFrame, preprocess_info_dir: str = None) -> BloggerDataset:
     """
-
-    :param data:
-    :param preprocess_info_dir:
-    :return:
+    prepares test dataset for network evaluation
+    :param data: data
+    :param preprocess_info_dir: path to directory with preprocessing information
+    :return: test dataset
     """
     enc = PhraseEncoder()
     split, category_map, age_scaling_params = load_info(preprocess_info_dir)

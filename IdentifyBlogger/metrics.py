@@ -6,11 +6,11 @@ from torch import nn
 
 def recall_macro(labels: torch.Tensor, pred_labels: torch.Tensor, n_labels: int) -> float:
     """
-
-    :param labels:
-    :param pred_labels:
-    :param n_labels:
-    :return:
+    computes recall score (with macro averaging)
+    :param labels: ground truth labels
+    :param pred_labels: predicted labels
+    :param n_labels: number of unique possible labels
+    :return: macro averaged recall score
     """
     recall = 0
     for i in range(n_labels):
@@ -57,10 +57,11 @@ def accuracy(labels: torch.Tensor, pred_labels: torch.Tensor) -> float:
 
 def score(y_pred: Dict[str, torch.Tensor], labels: Dict[str, torch.Tensor]) -> Dict[str, Dict]:
     """
-
-    :param y_pred:
-    :param labels:
-    :return:
+    scores every output with adequate metrics, accuracy, recall and f1 for categorical variables and rmse for
+    continous age
+    :param y_pred: network predictions for each output
+    :param labels: labels for each output
+    :return: scores for every output and every metric
     """
     y_pred = {k: v.detach().cpu() for k, v in y_pred.items()}
     labels = {k: v.detach().cpu() for k, v in labels.items()}
@@ -86,11 +87,11 @@ def score(y_pred: Dict[str, torch.Tensor], labels: Dict[str, torch.Tensor]) -> D
 
 def append_scores(scores: Dict[str, Dict], new_scores: Dict[str, Dict], weight: float = 1.0) -> Dict[str, Dict]:
     """
-
-    :param scores:
-    :param new_scores:
-    :param weight:
-    :return:
+    appends list of batch scores
+    :param scores: previous scores
+    :param new_scores: scores to add
+    :param weight: weigth of new scores
+    :return: appended scores
     """
     for label in scores.keys():
         for metric in scores[label].keys():
@@ -100,9 +101,9 @@ def append_scores(scores: Dict[str, Dict], new_scores: Dict[str, Dict], weight: 
 
 def avg_scores(scores: Dict[str, Dict]) -> Dict[str, Dict]:
     """
-
-    :param scores:
-    :return:
+    averages scores
+    :param scores: scores to average
+    :return: averaged scores
     """
     for label in scores.keys():
         for metric in scores[label].keys():

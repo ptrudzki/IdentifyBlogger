@@ -10,6 +10,13 @@ from IdentifyBlogger.train_loop import forward
 
 
 def evaluate(model_path: str, data_path: str, preprocess_info_dir: str = None, batch_size: int = 64) -> None:
+    """
+    function to evaluate previously trained model
+    :param model_path: path to model to evaluate
+    :param data_path: path to data
+    :param preprocess_info_dir: path to preprocessing information
+    :param batch_size: batch size for data loader
+    """
     data = pd.read_csv(data_path)
     test_dataset = prepare_evaluation_data(data, preprocess_info_dir)
     model = torch.load(model_path)
@@ -37,4 +44,4 @@ def evaluate(model_path: str, data_path: str, preprocess_info_dir: str = None, b
 
 
 if __name__ == '__main__':
-    
+    pass

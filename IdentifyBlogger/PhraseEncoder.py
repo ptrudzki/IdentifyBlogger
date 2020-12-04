@@ -89,11 +89,3 @@ class PhraseEncoder:
         phrase = re.sub('^\w ', ' ', phrase.lower())
         phrase = phrase if not phrase.startswith(' ') else phrase[1:]
         return [self._lookup_enc(token) for token in phrase.split()]
-
-    def encode_text(self, text: pd.Series) -> pd.Series:
-        """
-
-        :param text:
-        :return:
-        """
-        return text.apply(self.encode_phrase)

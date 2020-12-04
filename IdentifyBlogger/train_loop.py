@@ -1,5 +1,5 @@
 import time
-from typing import Tuple, List, Union, Dict, Callable
+from typing import List, Union, Dict
 
 import torch
 from torch import nn, optim
@@ -13,12 +13,12 @@ from IdentifyBlogger.metrics import score, append_scores, avg_scores
 def forward(model: nn.Module, encoded_text: torch.Tensor, lengths: torch.Tensor, label_names: List[str]) \
         -> Dict[str, torch.Tensor]:
     """
-
-    :param model:
-    :param encoded_text:
-    :param lengths:
-    :param label_names:
-    :return:
+    performs forward pass on given model with given inputs
+    :param model: model to passs data through
+    :param encoded_text: batch of encoded text
+    :param lengths: lengths of subsequent texts in batch
+    :param label_names: names of network outputs
+    :return: network outputs
     """
     encoded_text, lengths = encoded_text.to(model.device), lengths.to(model.device)
     y_pred = model(encoded_text, lengths)
@@ -29,11 +29,11 @@ def forward(model: nn.Module, encoded_text: torch.Tensor, lengths: torch.Tensor,
 def compute_loss(y_pred: Dict[str, torch.Tensor], labels: Dict[str, torch.Tensor], criterions_fncs: List[nn.Module]) \
         -> torch.Tensor:
     """
-
-    :param y_pred:
-    :param labels:
-    :param criterions_fncs:
-    :return:
+    computes cummulated loss for network outputs given specified ground truth
+    :param y_pred: network predictions
+    :param labels: ground truth
+    :param criterions_fncs: loss functions for subsequent network outputs
+    :return: cummulated loss
     """
     labels = {k: v.to(y_pred[k].device) for k, v in labels.items()}
     losses = [fn(y_pred[name], labels[name]) for name, fn in zip(y_pred.keys(), criterions_fncs)]
@@ -45,10 +45,9 @@ def compute_loss(y_pred: Dict[str, torch.Tensor], labels: Dict[str, torch.Tensor
 
 def backward(loss: torch.Tensor, *optimizers) -> None:
     """
-
-    :param loss:
-    :param optimizer:
-    :return:
+    performs backward pass for given tensor, and optimizes network with passed optimizers
+    :param loss: cummulative loss for network outputs
+    :param optimizers: network optimizers
     """
     loss.backward()
     for o in optimizers:
@@ -59,18 +58,18 @@ def train_loop(model: nn.Module, train_dataset: Dataset, validation_dataset: Dat
                batch_size: int = 32, n_epochs: int = 1, criterions: List[str] = None, num_workers: int = 0,
                score_every: int = 2, model_path: str = None, device: Union[str, torch.device] = 'cpu') -> None:
     """
-
-    :param model:
-    :param train_dataset:
-    :param validation_dataset:
-    :param lr:
-    :param batch_size:
-    :param n_epochs:
-    :param criterions:
-    :param num_workers:
-    :param score_every:
-    :param device:
-    :return:
+    trains model on specified datasets
+    :param model: model to train
+    :param train_dataset: dataset with training data
+    :param validation_dataset: dataset with validation data
+    :param lr: learning rate
+    :param batch_size: number of data entries loaded in one batch
+    :param n_epochs: number of epochs to train for
+    :param criterions: names of loss functions for subsequent network outputs
+    :param num_workers: number of data loading workers
+    :param score_every: defines how often model will be evaluated of validation data; None for no evaluation
+    :param model_path: path to save best models (lowest validation loss) to
+    :param device: device to train model on
     """
     model = model.to(device)
 
