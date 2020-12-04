@@ -1,4 +1,7 @@
 import torch
+from typing import Dict
+
+from torch import nn
 
 
 def recall_macro(labels: torch.Tensor, pred_labels: torch.Tensor, n_labels: int) -> float:
@@ -50,3 +53,58 @@ def accuracy(labels: torch.Tensor, pred_labels: torch.Tensor) -> float:
     :return: accuracy
     """
     return (pred_labels == labels).sum().item() / labels.shape[0]
+
+
+def score(y_pred: Dict[str, torch.Tensor], labels: Dict[str, torch.Tensor]) -> Dict[str, Dict]:
+    """
+
+    :param y_pred:
+    :param labels:
+    :return:
+    """
+    y_pred = {k: v.detach().cpu() for k, v in y_pred.items()}
+    labels = {k: v.detach().cpu() for k, v in labels.items()}
+    scores = {l: {} for l in labels.keys()}
+    categorical_metrics = {"accuracy": accuracy, "recall": recall_macro, "f1": f1_score_macro}
+    regression_metrics = {"rmse": lambda y_p, y_l: torch.sqrt(nn.MSELoss()(y_p, y_l)).item()}
+    for label in scores.keys():
+        if label == "age":
+            for name, metric in regression_metrics.items():
+                scores[label][name] = metric(y_pred[label], labels[label])
+        else:
+            for name, metric in categorical_metrics.items():
+                pred_shape = 1 if len(y_pred[label].shape) == 1 else y_pred[label].shape[1]
+                kwargs = {} if name == "accuracy" else {"n_labels": pred_shape}
+                if pred_shape > 1:
+                    pred = y_pred[label].argmax(1)
+                else:
+                    pred = (y_pred[label] > 0.5).float()
+                scores[label][name] = metric(pred, labels[label], **kwargs)
+
+    return scores
+
+
+def append_scores(scores: Dict[str, Dict], new_scores: Dict[str, Dict], weight: float = 1.0) -> Dict[str, Dict]:
+    """
+
+    :param scores:
+    :param new_scores:
+    :param weight:
+    :return:
+    """
+    for label in scores.keys():
+        for metric in scores[label].keys():
+            scores[label][metric].append(new_scores[label][metric] * weight)
+    return scores
+
+
+def avg_scores(scores: Dict[str, Dict]) -> Dict[str, Dict]:
+    """
+
+    :param scores:
+    :return:
+    """
+    for label in scores.keys():
+        for metric in scores[label].keys():
+            scores[label][metric] = sum(scores[label][metric]) / len(scores[label][metric])
+    return scores

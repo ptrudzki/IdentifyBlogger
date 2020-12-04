@@ -10,16 +10,13 @@ class PhraseEncoder:
     class for generating and storing vocabulary set and using it to encode phrases
     """
 
-    def __init__(self, data: pd.Series = None, min_freq: int = 3) -> None:
+    def __init__(self) -> None:
         """
         initializing encoder as empty or using data from specified directory
         :param data_path: path to specified directory
         :param min_freq: minimum number of times word has to occur in dataset to be added to vocabulary
         """
-        if data is None:
-            self.vocabulary = {}
-        else:
-            self.vocabulary = self._get_vocabulary(data, min_freq)
+        self.vocabulary = {}
 
     @property
     def vocab_size(self) -> int:
@@ -32,7 +29,7 @@ class PhraseEncoder:
         """
         return len(self.vocabulary) == 0
 
-    def _get_vocabulary(self, data: pd.Series, min_freq: int = 3) -> Dict[str, int]:
+    def get_vocabulary(self, data: pd.Series, min_freq: int = 3) -> Dict[str, int]:
         """
         creates vocabulary, set of words occurring in train data subset with corresponding integer encoding
         :param data:
@@ -54,21 +51,24 @@ class PhraseEncoder:
                 vocabulary[token] = len(vocabulary)
         return vocabulary
 
-    def load_vocabulary(self, model_dirpath: str) -> None:
+    def set_vocabulary(self, data: pd.Series, min_freq: int = 3) -> None:
+        self.vocabulary = self.get_vocabulary(data, min_freq)
+
+    def load_vocabulary(self, dirpath: str) -> None:
         """
         loads vocabulary from vocabulary.json file from specified directory
         :param model_dirpath: path to specified directory
         """
-        with open(os.path.join(model_dirpath, "vocabulary.json"), "r") as f:
+        with open(os.path.join(dirpath, "vocabulary.json"), "r") as f:
             self.vocabulary = json.load(f)
         f.close()
 
-    def save_vocabulary(self, model_dirpath: str) -> None:
+    def save_vocabulary(self, dirpath: str) -> None:
         """
         saves vocabulary to vocabulary.json file in specified directory
         :param model_dirpath: path to specified directory
         """
-        with open(os.path.join(model_dirpath, "vocabulary.json"), "w") as f:
+        with open(os.path.join(dirpath, "vocabulary.json"), "w") as f:
             json.dump(self.vocabulary, f)
         f.close()
 
@@ -86,7 +86,7 @@ class PhraseEncoder:
         :param phrase:
         :return:
         """
-        phrase = re.sub('\W+', ' ', phrase.lower())
+        phrase = re.sub('^\w ', ' ', phrase.lower())
         phrase = phrase if not phrase.startswith(' ') else phrase[1:]
         return [self._lookup_enc(token) for token in phrase.split()]
 

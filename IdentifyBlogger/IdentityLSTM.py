@@ -9,26 +9,24 @@ class IdentityLSTM(nn.Module):
     basic LSTM network with word encodings layer on input and fully connected layer with softmax activation on output
     """
 
-    def __init__(self, vocab_size: int, output_dims: List[int] = [], embedding_size: int = 32, hidden_size: int = 512,
-                 n_layers: int = 4, activations: List[str] = []) -> None:
+    def __init__(self, vocab_size: int, output_dims: List[int] = None, embedding_size: int = 32, hidden_size: int = 512,
+                 n_layers: int = 4, activations: List[str] = None) -> None:
         """
         Initializes IntentLSTM
         :param vocab_size: number of unique words in data
-        :param output_dim: number of data classes
+        :param output_dims: number of data classes
         :param embedding_size: size of embeddings per word in embedding layer
         :param hidden_size: size of hidden states in lstm layers
         :param n_layers: number of lstm layers
         """
         super(IdentityLSTM, self).__init__()
+        if activations is None:
+            activations = ["Sigmoid"]
+        if output_dims is None:
+            output_dims = [1]
         assert len(output_dims) == len(activations), f"length of output dims ({len(output_dims)}) must be equal to length of activations ({len(activations)})"
-        self.embedding = nn.Embedding(vocab_size, embedding_size)
-        # self.embedding = nn.Embedding(vocab_size, embedding_size, sparse=True)
+        self.embedding = nn.Embedding(vocab_size, embedding_size, sparse=True)
         self.lstm = nn.LSTM(embedding_size, hidden_size, num_layers=n_layers, batch_first=True)
-        # self.lstm = nn.GRU(embedding_size, hidden_size, num_layers=n_layers, batch_first=True)
-        # self.output_layers_names = []
-        # for i, (dim, activation) in enumerate(zip(output_dims, activations)):
-        #     setattr(self, f"linear{i}", self._get_output_layer(n_layers * hidden_size, dim, activation))
-        #     self.output_layers_names.append(f"linear{i}")
         self.output_layers = nn.ModuleList([self._get_output_layer(n_layers * hidden_size, d, a) for d, a in
                                             zip(output_dims, activations)])
 
@@ -58,9 +56,8 @@ class IdentityLSTM(nn.Module):
         """
         batch_size = lengths.shape[0]
         embedded = self.embedding(encoded_text)
-        packed_embeded = nn.utils.rnn.pack_padded_sequence(embedded, lengths, batch_first=True)
+        packed_embeded = nn.utils.rnn.pack_padded_sequence(embedded, lengths.cpu(), batch_first=True)
         _, (hidden, cell) = self.lstm(packed_embeded)
         hidden = hidden.permute([1, 0, 2]).contiguous().view(batch_size, -1)
-        # outputs = [getattr(self, layer)(hidden) for layer in self.output_layers_names]
         outputs = [layer(hidden) for layer in self.output_layers]
         return outputs

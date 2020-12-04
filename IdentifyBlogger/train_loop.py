@@ -7,10 +7,10 @@ from torch.utils.data import Dataset, DataLoader
 from tqdm.auto import tqdm
 
 from IdentifyBlogger.BloggerDataset import collate
-from IdentifyBlogger.metrics import accuracy, recall_macro, f1_score_macro
+from IdentifyBlogger.metrics import score, append_scores, avg_scores
 
 
-def _forward(model: nn.Module, encoded_text: torch.Tensor, lengths: torch.Tensor, label_names: List[str]) \
+def forward(model: nn.Module, encoded_text: torch.Tensor, lengths: torch.Tensor, label_names: List[str]) \
         -> Dict[str, torch.Tensor]:
     """
 
@@ -26,7 +26,7 @@ def _forward(model: nn.Module, encoded_text: torch.Tensor, lengths: torch.Tensor
                                                                                                        y_pred)}
 
 
-def _compute_loss(y_pred: Dict[str, torch.Tensor], labels: Dict[str, torch.Tensor], criterions_fncs: List[nn.Module]) \
+def compute_loss(y_pred: Dict[str, torch.Tensor], labels: Dict[str, torch.Tensor], criterions_fncs: List[nn.Module]) \
         -> torch.Tensor:
     """
 
@@ -36,7 +36,6 @@ def _compute_loss(y_pred: Dict[str, torch.Tensor], labels: Dict[str, torch.Tenso
     :return:
     """
     labels = {k: v.to(y_pred[k].device) for k, v in labels.items()}
-    # nn.BCELoss()(y_pred["gender"].view(-1), labels["gender"].float())
     losses = [fn(y_pred[name], labels[name]) for name, fn in zip(y_pred.keys(), criterions_fncs)]
     loss = None
     for l in losses:
@@ -44,23 +43,7 @@ def _compute_loss(y_pred: Dict[str, torch.Tensor], labels: Dict[str, torch.Tenso
     return loss
 
 
-def _score(y_pred: Dict[str, torch.Tensor], labels: Dict[str, torch.Tensor]) -> Dict[str, float]:
-    """
-
-    :param y_pred:
-    :param labels:
-    :return:
-    """
-    labels = {k: v.to(y_pred[k].device) for k, v in labels.items()}
-    scores = {"accuracy": [], "recall": [], "f1": []}
-    metrics = {"accuracy": accuracy, "recall": recall_macro, "f1": f1_score_macro}
-    for label in labels.keys():
-        for metric_name, metric in metrics.items():
-            scores[metric_name].append(metric(y_pred[label], label[label]))
-    return {k: sum(v) / len(v) for k, v in scores.items()}
-
-
-def _backward(loss: torch.Tensor, *optimizers) -> None:
+def backward(loss: torch.Tensor, *optimizers) -> None:
     """
 
     :param loss:
@@ -68,18 +51,13 @@ def _backward(loss: torch.Tensor, *optimizers) -> None:
     :return:
     """
     loss.backward()
-    # for i, l in enumerate(loss):
-    #     if i != len(loss) - 1:
-    #         l.backward(retain_graph=True)
-    #     else:
-    #         l.backward()
     for o in optimizers:
         o.step()
 
 
 def train_loop(model: nn.Module, train_dataset: Dataset, validation_dataset: Dataset = None, lr: float = 1e-3,
                batch_size: int = 32, n_epochs: int = 1, criterions: List[str] = None, num_workers: int = 0,
-               score_every: int = None, device: Union[str, torch.device] = 'cpu') -> None:
+               score_every: int = 2, model_path: str = None, device: Union[str, torch.device] = 'cpu') -> None:
     """
 
     :param model:
@@ -102,46 +80,55 @@ def train_loop(model: nn.Module, train_dataset: Dataset, validation_dataset: Dat
                                    collate_fn=collate, pin_memory=False)
 
     criterion_fncs = [getattr(nn, c)() for c in criterions]
-    optimizer = optim.Adam(model.parameters(), lr=lr)
-    # optimizer_sparse = optim.SparseAdam(model.embedding.parameters(), lr=lr)
-    # optimizer_sparse = optim.SparseAdam(list(model.embedding.parameters()) + list(model.lstm.parameters()), lr=lr)
-    # optimizer_dense = optim.Adam(model.output_layers.parameters(), lr=lr)
-    # optimizer_dense = optim.Adam(list(model.output_layers.parameters()) + list(model.lstm.parameters()), lr=lr)
+    optimizer_sparse = optim.SparseAdam(model.embedding.parameters(), lr=lr)
+    optimizer_dense = optim.Adam(list(model.output_layers.parameters()) + list(model.lstm.parameters()), lr=lr)
+
+    best_loss = 999.9
 
     print("Starting training!")
     for i in range(n_epochs):
-        train_losses = []
+        # train_losses = []
         start = time.time()
         for encoded_text, lengths, labels in tqdm(train_loader):
-            optimizer.zero_grad()
-            # optimizer_dense.zero_grad()
-            # optimizer_sparse.zero_grad()
-            y_pred = _forward(model, encoded_text, lengths, labels.keys())
-            loss = _compute_loss(y_pred, labels, criterion_fncs)
-            # loss, losses = _compute_loss(y_pred, labels, criterion_fncs)
+            optimizer_dense.zero_grad()
+            optimizer_sparse.zero_grad()
+            y_pred = forward(model, encoded_text, lengths, labels.keys())
+            loss = compute_loss(y_pred, labels, criterion_fncs)
             # train_losses.append(loss.item())
-            train_losses.append(loss)
-            _backward(loss, optimizer)
-            # _backward(loss, optimizer_dense, optimizer_sparse)
-            # _backward(losses, optimizer_dense, optimizer_sparse)
-            if score_every is not None:
-                if i % score_every == 0:
-                    scores = _score(y_pred, labels)
-                    print(f'avg train scores: accuracy: {scores["accuracy"]:.4f}; recall: {scores["recall"]:.4f}; '
-                          f'f1: {scores["f1"]:.4f}')
+            backward(loss, optimizer_dense, optimizer_sparse)
 
-        print(f"epoch: {i} train loss: {sum(train_losses) / len(train_losses):.4f} time: {time.time() - start:.2f}")
+        # print(f"epoch: {i} train loss: {sum(train_losses) / len(train_losses):.4f} time: {time.time() - start:.2f}")
 
         with torch.no_grad():
             test_losses = []
+            scores = None
             for encoded_text, lengths, labels in validation_loader:
-                y_pred = _forward(model, encoded_text, lengths, labels.keys())
-                loss = _compute_loss(y_pred, labels, criterion_fncs)
+                y_pred = forward(model, encoded_text, lengths, labels.keys())
+                loss = compute_loss(y_pred, labels, criterion_fncs)
                 test_losses.append(loss.item())
-                if score_every is not None:
-                    if i % score_every == 0:
-                        scores = _score(y_pred, labels)
-                        print(f'avg test scores: accuracy: {scores["accuracy"]:.4f}; recall: {scores["recall"]:.4f}; '
-                              f'f1: {scores["f1"]:.4f}')
 
-            print(f"epoch: {i} test loss: {sum(test_losses) / len(test_losses):.4f}")
+                if score_every:
+                    if i % score_every == 0:
+                        batch_scores = score(y_pred, labels)
+                        if scores is None:
+                            scores = {}
+                            for label in batch_scores.keys():
+                                scores[label] = {}
+                                for metric in batch_scores[label].keys():
+                                    scores[label][metric] = []
+                            else:
+                                scores = append_scores(scores, batch_scores,
+                                                       weight=len(lengths) / validation_loader.batch_size)
+
+            avg_test_loss = sum(test_losses) / len(test_losses)
+            if model_path is not None and avg_test_loss < best_loss:
+                torch.save(model, model_path)
+
+            if score_every:
+                if i % score_every == 0:
+                    scores = avg_scores(scores)
+                    print(f"epoch: {i} Validation scores")
+                    for label in scores.keys():
+                        print(f"{label}: " + "".join([f"{metric}: {s:.2f} " for metric, s in scores[label].items()]))
+
+            # print(f"epoch: {i} test loss: {sum(test_losses) / len(test_losses):.4f}")
