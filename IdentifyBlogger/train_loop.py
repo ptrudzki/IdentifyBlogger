@@ -20,7 +20,7 @@ def _forward(model: nn.Module, encoded_text: torch.Tensor, lengths: torch.Tensor
     :param label_names:
     :return:
     """
-    # encoded_text, lengths = encoded_text.to(model.device), lengths.to(model.device)
+    encoded_text, lengths = encoded_text.to(model.device), lengths.to(model.device)
     y_pred = model(encoded_text, lengths)
     return {name: result if name not in ["gender", "age"] else result.view(-1) for name, result in zip(label_names,
                                                                                                        y_pred)}
@@ -35,7 +35,7 @@ def _compute_loss(y_pred: Dict[str, torch.Tensor], labels: Dict[str, torch.Tenso
     :param criterions_fncs:
     :return:
     """
-    # labels = {k: v.to(y_pred[k].device) for k, v in labels.items()}
+    labels = {k: v.to(y_pred[k].device) for k, v in labels.items()}
     # nn.BCELoss()(y_pred["gender"].view(-1), labels["gender"].float())
     losses = [fn(y_pred[name], labels[name]) for name, fn in zip(y_pred.keys(), criterions_fncs)]
     loss = None
@@ -102,27 +102,27 @@ def train_loop(model: nn.Module, train_dataset: Dataset, validation_dataset: Dat
                                    collate_fn=collate, pin_memory=False)
 
     criterion_fncs = [getattr(nn, c)() for c in criterions]
-    # optimizer = optim.Adam(model.parameters(), lr=lr)
-    optimizer_sparse = optim.SparseAdam(model.embedding.parameters(), lr=lr)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+    # optimizer_sparse = optim.SparseAdam(model.embedding.parameters(), lr=lr)
     # optimizer_sparse = optim.SparseAdam(list(model.embedding.parameters()) + list(model.lstm.parameters()), lr=lr)
     # optimizer_dense = optim.Adam(model.output_layers.parameters(), lr=lr)
-    optimizer_dense = optim.Adam(list(model.output_layers.parameters()) + list(model.lstm.parameters()), lr=lr)
+    # optimizer_dense = optim.Adam(list(model.output_layers.parameters()) + list(model.lstm.parameters()), lr=lr)
 
     print("Starting training!")
     for i in range(n_epochs):
         train_losses = []
         start = time.time()
         for encoded_text, lengths, labels in tqdm(train_loader):
-            # optimizer.zero_grad()
-            optimizer_dense.zero_grad()
-            optimizer_sparse.zero_grad()
+            optimizer.zero_grad()
+            # optimizer_dense.zero_grad()
+            # optimizer_sparse.zero_grad()
             y_pred = _forward(model, encoded_text, lengths, labels.keys())
             loss = _compute_loss(y_pred, labels, criterion_fncs)
             # loss, losses = _compute_loss(y_pred, labels, criterion_fncs)
             # train_losses.append(loss.item())
             train_losses.append(loss)
-            # _backward(loss, optimizer)
-            _backward(loss, optimizer_dense, optimizer_sparse)
+            _backward(loss, optimizer)
+            # _backward(loss, optimizer_dense, optimizer_sparse)
             # _backward(losses, optimizer_dense, optimizer_sparse)
             if score_every is not None:
                 if i % score_every == 0:

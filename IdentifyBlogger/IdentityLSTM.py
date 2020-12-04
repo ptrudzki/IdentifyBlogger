@@ -21,8 +21,10 @@ class IdentityLSTM(nn.Module):
         """
         super(IdentityLSTM, self).__init__()
         assert len(output_dims) == len(activations), f"length of output dims ({len(output_dims)}) must be equal to length of activations ({len(activations)})"
-        self.embedding = nn.Embedding(vocab_size, embedding_size, sparse=True)
+        self.embedding = nn.Embedding(vocab_size, embedding_size)
+        # self.embedding = nn.Embedding(vocab_size, embedding_size, sparse=True)
         self.lstm = nn.LSTM(embedding_size, hidden_size, num_layers=n_layers, batch_first=True)
+        # self.lstm = nn.GRU(embedding_size, hidden_size, num_layers=n_layers, batch_first=True)
         # self.output_layers_names = []
         # for i, (dim, activation) in enumerate(zip(output_dims, activations)):
         #     setattr(self, f"linear{i}", self._get_output_layer(n_layers * hidden_size, dim, activation))

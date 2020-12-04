@@ -27,8 +27,8 @@ class BloggerDataset(Dataset):
     def __init__(self, data: pd.DataFrame) -> None:
         # data["text_length"] = data["text"].apply(len)
         # self.data = data.applymap(torch.tensor)
-        # self.data = data.applymap(torch.tensor)
-        self.data = data.applymap(lambda x: torch.tensor(x, device="cuda"))
+        self.data = data.applymap(torch.tensor)
+        # self.data = data.applymap(lambda x: torch.tensor(x, device="cuda"))
 
     def __len__(self) -> int:
         return len(self.data)
