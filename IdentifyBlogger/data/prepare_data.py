@@ -5,8 +5,8 @@ from typing import Dict, List, Tuple
 import numpy as np
 import pandas as pd
 
-from IdentifyBlogger.BloggerDataset import BloggerDataset
-from IdentifyBlogger.PhraseEncoder import PhraseEncoder
+from IdentifyBlogger.data.BloggerDataset import BloggerDataset
+from IdentifyBlogger.data.PhraseEncoder import PhraseEncoder
 
 
 def encode_data(data: pd.DataFrame, category_map: Dict[str, Dict[str, int]]) -> pd.DataFrame:

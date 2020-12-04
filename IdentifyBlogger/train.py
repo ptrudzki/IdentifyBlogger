@@ -1,13 +1,12 @@
-import argparse
-import os
-from typing import Tuple, Union
+from typing import Union
 
+import fire
 import pandas as pd
 import torch
 
-from IdentifyBlogger.IdentityLSTM import IdentityLSTM
-from IdentifyBlogger.prepare_data import prepare_train_data
-from IdentifyBlogger.train_loop import train_loop
+from IdentifyBlogger.neural.IdentityLSTM import IdentityLSTM
+from IdentifyBlogger.data.prepare_data import prepare_train_data
+from IdentifyBlogger.neural.train_loop import train_loop
 
 
 def train(data_path: str, test_size: float = 0.1, validate: bool = True, preprocess_info_dir: str = None,
@@ -31,8 +30,7 @@ def train(data_path: str, test_size: float = 0.1, validate: bool = True, preproc
     :param batch_size: number of data entries loaded in one batch
     :param device: device to train on
     """
-    # data = pd.read_csv(data_path)
-    data = pd.read_csv(data_path, index_col=0)
+    data = pd.read_csv(data_path)
     categorical_variables = ["gender", "topic", "sign"]
     train_dataset, validation_dataset, model_sizes = prepare_train_data(data, validate=validate,
                                                                         preprocess_info_dir=preprocess_info_dir,
@@ -53,6 +51,4 @@ def train(data_path: str, test_size: float = 0.1, validate: bool = True, preproc
 
 
 if __name__ == '__main__':
-    # p = "D:/data/blogtext/blogtext.csv"
-    p = "./temp_data"
-    train(p, min_vocab_freq=3)
+    fire.Fire(train)

@@ -1,12 +1,11 @@
-import argparse
-
+import fire
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 
-from IdentifyBlogger.metrics import score, append_scores, avg_scores
-from IdentifyBlogger.prepare_data import prepare_evaluation_data
-from IdentifyBlogger.train_loop import forward
+from IdentifyBlogger.neural.metrics import score, append_scores, avg_scores
+from IdentifyBlogger.data.prepare_data import prepare_evaluation_data
+from IdentifyBlogger.neural.train_loop import forward
 
 
 def evaluate(model_path: str, data_path: str, preprocess_info_dir: str = None, batch_size: int = 64) -> None:
@@ -44,4 +43,4 @@ def evaluate(model_path: str, data_path: str, preprocess_info_dir: str = None, b
 
 
 if __name__ == '__main__':
-    pass
+    fire.Fire(evaluate)

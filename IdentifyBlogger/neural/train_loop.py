@@ -6,8 +6,8 @@ from torch import nn, optim
 from torch.utils.data import Dataset, DataLoader
 from tqdm.auto import tqdm
 
-from IdentifyBlogger.BloggerDataset import collate
-from IdentifyBlogger.metrics import score, append_scores, avg_scores
+from IdentifyBlogger.data.BloggerDataset import collate
+from IdentifyBlogger.neural.metrics import score, append_scores, avg_scores
 
 
 def forward(model: nn.Module, encoded_text: torch.Tensor, lengths: torch.Tensor, label_names: List[str]) \
