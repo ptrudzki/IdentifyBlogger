@@ -38,6 +38,9 @@ class IdentityLSTM(nn.Module):
     def n_outputs(self):
         return len(self.output_layers)
 
+    def dense_parameters(self):
+        return list(self.lstm.parameters()) + list(self.output_layers.parameters())
+
     @staticmethod
     def _get_output_layer(input_dim: int, output_dim: int, activation: str = None) -> nn.Sequential:
         """

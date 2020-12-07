@@ -80,7 +80,7 @@ def train_loop(model: nn.Module, train_dataset: Dataset, validation_dataset: Dat
 
     criterion_fncs = [getattr(nn, c)() for c in criterions]
     optimizer_sparse = optim.SparseAdam(model.embedding.parameters(), lr=lr)
-    optimizer_dense = optim.Adam(list(model.output_layers.parameters()) + list(model.lstm.parameters()), lr=lr)
+    optimizer_dense = optim.Adam(model.dense_parameters(), lr=lr)
 
     best_loss = 999.9
 
@@ -89,12 +89,16 @@ def train_loop(model: nn.Module, train_dataset: Dataset, validation_dataset: Dat
         # train_losses = []
         start = time.time()
         for encoded_text, lengths, labels in tqdm(train_loader):
+            # if model.device.type == "cuda":
+            #     torch.cuda.empty_cache()
             optimizer_dense.zero_grad()
             optimizer_sparse.zero_grad()
             y_pred = forward(model, encoded_text, lengths, labels.keys())
             loss = compute_loss(y_pred, labels, criterion_fncs)
             # train_losses.append(loss.item())
+            del y_pred
             backward(loss, optimizer_dense, optimizer_sparse)
+            del loss
 
         # print(f"epoch: {i} train loss: {sum(train_losses) / len(train_losses):.4f} time: {time.time() - start:.2f}")
 
@@ -105,6 +109,7 @@ def train_loop(model: nn.Module, train_dataset: Dataset, validation_dataset: Dat
                 y_pred = forward(model, encoded_text, lengths, labels.keys())
                 loss = compute_loss(y_pred, labels, criterion_fncs)
                 test_losses.append(loss.item())
+                del loss
 
                 if score_every:
                     if i % score_every == 0:

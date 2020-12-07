@@ -11,8 +11,8 @@ from IdentifyBlogger.neural.train_loop import train_loop
 
 def train(data_path: str, test_size: float = 0.1, validate: bool = True, preprocess_info_dir: str = None,
           min_vocab_freq: int = 25, save_preprocess_info_dir: str = None, n_layers=4, embedding_size=32,
-          hidden_size: int = 512, n_epochs: int = 5, num_workers: int = 0, batch_size: int = 64,
-          device: Union[str, torch.device] = "cpu") -> None:
+          hidden_size: int = 512, n_epochs: int = 5, num_workers: int = 0, batch_size: int = 64, score_every: int = 1,
+          model_path: str = None, device: Union[str, torch.device] = "cpu") -> None:
     """
     function to train blog author identity model
     :param data_path: path to data csv file
@@ -28,6 +28,8 @@ def train(data_path: str, test_size: float = 0.1, validate: bool = True, preproc
     :param n_epochs: number of epochs to train for
     :param num_workers: number of data loading workers
     :param batch_size: number of data entries loaded in one batch
+    :param score_every: core and print results every n epochs
+    :param model_path: path to save the model to
     :param device: device to train on
     """
     data = pd.read_csv(data_path)
@@ -47,7 +49,7 @@ def train(data_path: str, test_size: float = 0.1, validate: bool = True, preproc
                          hidden_size=hidden_size)
 
     train_loop(model, train_dataset, validation_dataset, criterions=criterions, device=device, n_epochs=n_epochs,
-               num_workers=num_workers, batch_size=batch_size)
+               num_workers=num_workers, batch_size=batch_size, score_every=score_every, model_path=model_path)
 
 
 if __name__ == '__main__':
